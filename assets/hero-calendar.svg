@@ -1,0 +1,92 @@
+<svg width="560" height="500" viewBox="0 0 560 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wash" x1="90" y1="72" x2="467" y2="443" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDEBD9" />
+      <stop offset="0.62" stop-color="#CBE0CD" />
+      <stop offset="1" stop-color="#E6E9CF" />
+    </linearGradient>
+    <linearGradient id="band" x1="155" y1="55" x2="455" y2="159" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#245B45" />
+      <stop offset="1" stop-color="#173F31" />
+    </linearGradient>
+    <filter id="cardShadow" x="87" y="6" width="398" height="463" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#163F31" flood-opacity="0.18" />
+    </filter>
+    <filter id="chipShadow" x="13" y="143" width="203" height="63" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#163F31" flood-opacity="0.12" />
+    </filter>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.5" fill="#6A8D78" opacity="0.3" />
+    </pattern>
+    <clipPath id="cardClip">
+      <rect x="155" y="55" width="300" height="380" rx="29" />
+    </clipPath>
+  </defs>
+
+  <path d="M93 136C134 47 257 38 359 65C469 94 525 183 501 285C477 390 390 460 270 447C140 433 46 365 62 262C70 213 70 190 93 136Z" fill="url(#wash)" />
+  <path d="M104 154C145 83 253 72 345 98C437 124 492 194 471 279C450 365 373 419 276 410C172 401 95 348 102 268C106 225 81 204 104 154Z" stroke="#8AAE93" stroke-opacity="0.45" stroke-width="1.4" stroke-dasharray="4 8" />
+  <rect x="327" y="46" width="178" height="153" fill="url(#dots)" transform="rotate(8 327 46)" />
+
+  <g filter="url(#cardShadow)" transform="rotate(-4 305 245)">
+    <rect x="155" y="55" width="300" height="380" rx="29" fill="#FFFCF4" stroke="#D7D2C3" />
+    <g clip-path="url(#cardClip)">
+      <rect x="155" y="55" width="300" height="104" fill="url(#band)" />
+      <path d="M155 133C219 118 277 141 343 124C392 112 422 123 455 114V159H155V133Z" fill="#245B45" opacity="0.45" />
+      <circle cx="455" cy="67" r="58" fill="#FFFFFF" opacity="0.035" />
+      <circle cx="449" cy="68" r="36" fill="#FFFFFF" opacity="0.035" />
+    </g>
+    <rect x="210" y="40" width="13" height="35" rx="6.5" fill="#E8E0CC" stroke="#AEA58E" />
+    <rect x="389" y="40" width="13" height="35" rx="6.5" fill="#E8E0CC" stroke="#AEA58E" />
+    <text x="190" y="101" fill="#E9F1E5" font-family="'Courier New', monospace" font-size="12" letter-spacing="2.5">FREE TRIAL</text>
+    <text x="190" y="129" fill="#BED4C2" font-family="'Courier New', monospace" font-size="11" letter-spacing="1.6">CANCEL BY</text>
+    <path d="M416 100L426 90L436 100L426 110L416 100Z" fill="#DD8A60" opacity="0.95" />
+    <text x="189" y="267" fill="#1C3429" font-family="Georgia, 'Times New Roman', serif" font-size="99" font-weight="500" letter-spacing="-5">30</text>
+    <text x="337" y="203" fill="#65746B" font-family="'Courier New', monospace" font-size="10" letter-spacing="1.6">FRIDAY</text>
+    <text x="337" y="227" fill="#28473A" font-family="Georgia, 'Times New Roman', serif" font-size="25">October</text>
+    <text x="337" y="252" fill="#849087" font-family="'Courier New', monospace" font-size="10" letter-spacing="1.1">2026</text>
+    <path d="M189 294H421" stroke="#DED7C8" stroke-width="1.3" stroke-dasharray="3 5" />
+    <circle cx="199" cy="326" r="14" fill="#E5EFE4" />
+    <path d="M193 326L197 330L206 320" stroke="#245B45" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="223" y="331" fill="#45564C" font-family="'Courier New', monospace" font-size="11" letter-spacing="0.2">Reminder · 3 days before</text>
+    <circle cx="199" cy="365" r="14" fill="#F4E5DC" />
+    <path d="M194 365H204M199 360V370" stroke="#B85F42" stroke-width="2" stroke-linecap="round" />
+    <text x="223" y="370" fill="#45564C" font-family="'Courier New', monospace" font-size="11" letter-spacing="0.2">Cancel page saved</text>
+    <rect x="189" y="392" width="95" height="24" rx="12" fill="#EDF2E7" />
+    <circle cx="202" cy="404" r="3" fill="#3B7658" />
+    <text x="212" y="408" fill="#436152" font-family="'Courier New', monospace" font-size="9" letter-spacing="0.7">LOCAL ONLY</text>
+  </g>
+
+  <g filter="url(#chipShadow)" transform="rotate(3 110 177)">
+    <rect x="28" y="150" width="174" height="48" rx="24" fill="#FFFCF4" stroke="#E0DACC" />
+    <circle cx="54" cy="174" r="13" fill="#F7E2D5" />
+    <path d="M54 166V174L59 177" stroke="#B85F42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="77" y="172" fill="#2C4438" font-family="'Courier New', monospace" font-size="9" letter-spacing="1">NUDGE</text>
+    <text x="77" y="186" fill="#637269" font-family="'Courier New', monospace" font-size="10">3 days before</text>
+  </g>
+
+  <g transform="rotate(7 474 372)">
+    <rect x="397" y="342" width="151" height="60" rx="20" fill="#1E4A39" />
+    <circle cx="423" cy="372" r="14" fill="#E7D7AC" />
+    <path d="M417 372L421 376L430 365" stroke="#1E4A39" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="447" y="369" fill="#DDE9DD" font-family="'Courier New', monospace" font-size="9" letter-spacing="1">CANCELED</text>
+    <text x="447" y="384" fill="#FFFFFF" font-family="'Courier New', monospace" font-size="11" font-weight="700">Before the bill.</text>
+  </g>
+
+  <g transform="translate(465 81)">
+    <circle cx="26" cy="26" r="26" fill="#FFFCF4" stroke="#D9D1BE" />
+    <path d="M35 35C34 27 31 22 26 18C21 22 18 27 17 35H35Z" fill="#D3E0CF" stroke="#264E3E" stroke-width="1.5" stroke-linejoin="round" />
+    <path d="M26 36V40M22 41H30" stroke="#264E3E" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="26" cy="17" r="2.5" fill="#C56A4A" />
+  </g>
+
+  <path d="M80 402C101 373 125 368 147 383C121 391 104 419 97 447C91 427 85 416 80 402Z" fill="#6F987B" opacity="0.75" />
+  <path d="M70 437C89 417 111 415 127 425C107 433 97 452 93 471C85 459 78 450 70 437Z" fill="#A9C0A0" opacity="0.85" />
+  <path d="M67 438C81 424 94 417 112 414" stroke="#527A60" stroke-width="1.3" stroke-linecap="round" opacity="0.7" />
+
+  <g opacity="0.65">
+    <path d="M493 233V249M485 241H501" stroke="#C56A4A" stroke-width="1.5" stroke-linecap="round" />
+    <path d="M99 301V313M93 307H105" stroke="#245B45" stroke-width="1.3" stroke-linecap="round" />
+    <circle cx="505" cy="270" r="3" fill="#C56A4A" />
+    <circle cx="126" cy="218" r="2.5" fill="#245B45" />
+  </g>
+</svg>

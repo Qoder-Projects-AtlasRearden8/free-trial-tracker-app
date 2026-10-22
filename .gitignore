@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+.task
+*.log
+trialwise-backup-*.json
+trialwise-trials-*.csv
+trialwise-reminders-*.ics

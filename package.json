@@ -1,0 +1,17 @@
+{
+  "name": "trialwise",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "An offline-first, local-only free trial and subscription tracker.",
+  "author": "Asdale Dynamics, LLC",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "node --check app.js && node --check sw.js && node --check server.js && node --check lib/csv.js && node --check lib/data.js && node --check lib/dates.js && node --check lib/ics.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Trialwise is a calm, offline-first free trial and subscription tracker. Keep cancel-by dates, reminders, links, and costs on your own device."
+    />
+    <meta name="theme-color" content="#1d4b3a" />
+    <meta name="color-scheme" content="light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Trialwise" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"
+    />
+    <title>Trialwise — free trials, gently tracked</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <div class="site-shell">
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="Trialwise home">
+          <img
+            class="brand__mark"
+            src="icons/icon.svg"
+            alt=""
+            width="42"
+            height="42"
+          />
+          <span class="brand__copy">
+            <span class="brand__name">Trialwise</span>
+            <span class="brand__tagline">local trial tracker</span>
+          </span>
+        </a>
+
+        <nav class="header-actions" aria-label="App actions">
+          <button
+            class="icon-button install-trigger"
+            id="install-button"
+            type="button"
+            aria-label="Install Trialwise"
+            hidden
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
+              <path d="M5 16.5V19h14v-2.5" />
+            </svg>
+            <span class="button-label">Install</span>
+          </button>
+
+          <button
+            class="icon-button"
+            id="reminders-button"
+            type="button"
+            aria-label="Reminder settings"
+          >
+            <span class="icon-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 9a6 6 0 0 0-12 0c0 7-2.5 7-2.5 8.5h17C20.5 16 18 16 18 9Z" />
+                <path d="M9.5 21h5" />
+              </svg>
+              <span class="attention-dot" id="notification-dot" hidden></span>
+            </span>
+            <span class="button-label">Reminders</span>
+          </button>
+
+          <button
+            class="icon-button"
+            id="data-button"
+            type="button"
+            aria-label="Backup and data"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <ellipse cx="12" cy="5.5" rx="7.5" ry="3" />
+              <path d="M4.5 5.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6" />
+              <path d="M4.5 11.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6" />
+            </svg>
+            <span class="button-label">Data</span>
+          </button>
+
+          <button class="button button--primary header-add" id="add-trial-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span>Add trial</span>
+          </button>
+        </nav>
+      </header>
+
+      <main id="main-content">
+        <section class="welcome" id="welcome-section" aria-labelledby="welcome-title">
+          <div class="welcome__copy">
+            <p class="eyebrow">
+              <span class="eyebrow__mark" aria-hidden="true"></span>
+              A calmer free-trial tracker
+            </p>
+            <h1 class="welcome__title" id="welcome-title">
+              Free trials,
+              <span class="accent-serif">without the surprise bill.</span>
+            </h1>
+            <p class="welcome__lede">
+              Write down the cancel-by date once. Trialwise keeps the dates,
+              reminders, and cancel links together — entirely in this browser.
+            </p>
+            <div class="welcome__actions">
+              <button
+                class="button button--primary button--large"
+                id="welcome-add-button"
+                type="button"
+              >
+                Add your first trial
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h13m-5-5 5 5-5 5" />
+                </svg>
+              </button>
+              <button
+                class="button button--quiet button--large"
+                data-open-dialog="about-dialog"
+                type="button"
+              >
+                See how it works
+              </button>
+            </div>
+            <ul class="trust-list" aria-label="Trialwise principles">
+              <li>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3.5 5.5 6v5.2c0 4.1 2.6 7.5 6.5 9.3 3.9-1.8 6.5-5.2 6.5-9.3V6L12 3.5Z" />
+                  <path d="m9.2 12 1.9 1.9 3.9-4.1" />
+                </svg>
+                Stays on this device
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 16.5V19h16v-2.5M12 4v11m0 0 4-4m-4 4-4-4" />
+                </svg>
+                Works offline
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="8" r="3.4" />
+                  <path d="M5.5 20c.5-4 2.8-6 6.5-6s6 2 6.5 6" />
+                </svg>
+                No account
+              </li>
+            </ul>
+          </div>
+
+          <div class="welcome__art" aria-hidden="true">
+            <img
+              src="assets/hero-calendar.svg"
+              alt=""
+              width="560"
+              height="500"
+            />
+          </div>
+        </section>
+
+        <section class="steps" id="welcome-steps" aria-labelledby="steps-title">
+          <div class="steps__intro">
+            <p class="eyebrow">About a minute, start to finish</p>
+            <h2 id="steps-title">A small habit that saves real money.</h2>
+          </div>
+          <ol class="steps__list">
+            <li>
+              <span class="step-number" aria-hidden="true">01</span>
+              <div>
+                <h3>Add the details</h3>
+                <p>Start date, trial length, and what it costs afterward.</p>
+              </div>
+            </li>
+            <li>
+              <span class="step-number" aria-hidden="true">02</span>
+              <div>
+                <h3>Get a timely nudge</h3>
+                <p>See deadlines on your board, with browser alerts where supported.</p>
+              </div>
+            </li>
+            <li>
+              <span class="step-number" aria-hidden="true">03</span>
+              <div>
+                <h3>Cancel with confidence</h3>
+                <p>Keep the cancel page handy, mark it done, and back up anytime.</p>
+              </div>
+            </li>
+          </ol>
+        </section>
+
+        <section class="dashboard" id="dashboard-section" hidden>
+          <div class="dashboard__heading">
+            <div>
+              <p class="eyebrow" id="today-label">Today</p>
+              <h1 class="dashboard__title">Your trial board</h1>
+              <p class="dashboard__summary" id="dashboard-summary">
+                A quiet view of what needs your attention.
+              </p>
+            </div>
+            <div class="save-status" id="save-status">
+              <span class="save-status__dot" aria-hidden="true"></span>
+              <span id="save-status-text">Saved only on this device</span>
+            </div>
+          </div>
+
+          <div class="reminder-alerts" id="reminder-alerts" aria-live="polite"></div>
+
+          <section class="summary-grid" aria-label="Trial summary">
+            <article class="summary-card summary-card--deadline" id="next-deadline-card">
+              <div class="summary-card__top">
+                <span class="summary-card__label" id="next-deadline-label">Next cancel-by</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="5.5" width="16" height="14.5" rx="3" />
+                  <path d="M8 3.5v4M16 3.5v4M4 10h16" />
+                </svg>
+              </div>
+              <p class="summary-card__value" id="next-deadline-value">—</p>
+              <p class="summary-card__note" id="next-deadline-note">
+                Nothing on the calendar yet.
+              </p>
+            </article>
+
+            <article class="summary-card">
+              <div class="summary-card__top">
+                <span class="summary-card__label">Open trials</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 7h14M5 12h14M5 17h9" />
+                </svg>
+              </div>
+              <p class="summary-card__value" id="open-trials-value">0</p>
+              <p class="summary-card__note" id="open-trials-note">
+                Nothing in the trial window.
+              </p>
+            </article>
+
+            <article class="summary-card">
+              <div class="summary-card__top">
+                <span class="summary-card__label">Potential monthly cost</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3.5v17M16 7.5c0-1.7-1.8-3-4-3s-4 1.3-4 3 1.8 3 4 3 4 1.3 4 3-1.8 3-4 3-4-1.3-4-3" />
+                </svg>
+              </div>
+              <p class="summary-card__value" id="monthly-cost-value">$0</p>
+              <p class="summary-card__note" id="monthly-cost-note">
+                Recurring prices, if you keep open trials.
+              </p>
+            </article>
+          </section>
+
+          <section class="trials-panel" aria-labelledby="trials-heading">
+            <div class="trials-panel__top">
+              <div class="trials-panel__heading">
+                <h2 id="trials-heading">Your trials</h2>
+                <p id="trials-count">No trials yet.</p>
+              </div>
+
+              <div class="trial-controls">
+                <div class="filter-group" role="group" aria-label="Filter trials">
+                  <button class="filter-chip is-active" data-filter="all" type="button">
+                    All <span class="filter-count" data-count="all">0</span>
+                  </button>
+                  <button class="filter-chip" data-filter="open" type="button">
+                    Open <span class="filter-count" data-count="open">0</span>
+                  </button>
+                  <button class="filter-chip" data-filter="canceled" type="button">
+                    Canceled <span class="filter-count" data-count="canceled">0</span>
+                  </button>
+                </div>
+
+                <label class="search-field">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="6.5" />
+                    <path d="m16 16 4 4" />
+                  </svg>
+                  <span class="sr-only">Search trials</span>
+                  <input
+                    id="search-input"
+                    type="search"
+                    placeholder="Search trials"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div class="trials-list" id="trials-list" role="list"></div>
+
+            <div class="list-empty" id="list-empty" hidden>
+              <span class="list-empty__icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48">
+                  <rect x="8" y="10" width="32" height="30" rx="8" />
+                  <path d="M16 6v8M32 6v8M8 19h32" />
+                  <path d="M18 29h12" />
+                </svg>
+              </span>
+              <h3 id="list-empty-title">No trials here</h3>
+              <p id="list-empty-copy">Try another filter or add a new trial.</p>
+              <button class="button button--primary" id="list-empty-add" type="button">
+                Add a trial
+              </button>
+            </div>
+          </section>
+
+          <aside class="local-note" aria-label="Privacy note">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3.5 5.5 6v5.2c0 4.1 2.6 7.5 6.5 9.3 3.9-1.8 6.5-5.2 6.5-9.3V6L12 3.5Z" />
+              <path d="m9.2 12 1.9 1.9 3.9-4.1" />
+            </svg>
+            <p>
+              <strong>Your data stays put.</strong> Trialwise has no account,
+              analytics, or cloud sync. Cancel links open only when you choose them.
+              <button class="inline-link" id="backup-note-button" type="button">
+                Download a backup
+              </button>
+              before clearing browser data.
+            </p>
+          </aside>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="site-footer__top">
+          <div class="footer-brand">
+            <img src="icons/icon.svg" alt="" width="32" height="32" />
+            <span>Trialwise</span>
+          </div>
+          <nav class="footer-links" aria-label="Footer">
+            <button data-open-dialog="about-dialog" type="button">How it works</button>
+            <button data-open-dialog="data-dialog" type="button">Backup &amp; data</button>
+            <a href="LICENSE">MIT License</a>
+          </nav>
+        </div>
+        <div class="site-footer__bottom">
+          <p>Local by default. No sign-up. No tracking.</p>
+          <p>v1.0.0 · Built by ASDALE DYNAMICS, LLC</p>
+        </div>
+      </footer>
+    </div>
+
+    <dialog class="modal trial-modal" id="trial-dialog" aria-labelledby="trial-dialog-title">
+      <form id="trial-form" novalidate>
+        <div class="modal__header">
+          <div>
+            <p class="modal__eyebrow" id="trial-dialog-eyebrow">New trial</p>
+            <h2 id="trial-dialog-title">Add a free trial</h2>
+          </div>
+          <button
+            class="modal__close"
+            type="button"
+            aria-label="Close trial form"
+            data-close-dialog="trial-dialog"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal__body trial-form-body">
+          <div class="form-alert" id="form-alert" role="alert" hidden></div>
+
+          <div class="field field--full">
+            <label for="trial-name">
+              Service or trial name
+              <span class="required-mark" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="trial-name"
+              name="name"
+              type="text"
+              maxlength="80"
+              autocomplete="off"
+              placeholder="e.g. Example Music"
+              required
+            />
+            <span class="field-error" data-error-for="name"></span>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="trial-start-date">
+                Start date
+                <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <input id="trial-start-date" name="startDate" type="date" required />
+              <span class="field-hint">The day you started the trial.</span>
+              <span class="field-error" data-error-for="startDate"></span>
+            </div>
+
+            <div class="field">
+              <label for="trial-days">
+                Trial length (days)
+                <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="trial-days"
+                name="trialDays"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                max="3650"
+                step="1"
+                value="7"
+                required
+              />
+              <div class="quick-days" aria-label="Quick trial lengths">
+                <button type="button" data-days="3">3</button>
+                <button type="button" data-days="7">7</button>
+                <button type="button" data-days="14">14</button>
+                <button type="button" data-days="30">30</button>
+              </div>
+              <span class="field-error" data-error-for="trialDays"></span>
+            </div>
+          </div>
+
+          <div class="deadline-preview" id="deadline-preview">
+            <span class="deadline-preview__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 7v5l3 2" />
+                <circle cx="12" cy="12" r="8.5" />
+              </svg>
+            </span>
+            <div>
+              <p class="deadline-preview__label">Your safe cancellation window</p>
+              <p class="deadline-preview__value" id="preview-cancel-date">
+                Choose a start date
+              </p>
+              <p class="deadline-preview__note" id="preview-billing-date">
+                Dates update as you type.
+              </p>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="trial-reminder">Remind me</label>
+              <select id="trial-reminder" name="reminderDays">
+                <option value="14">14 days before</option>
+                <option value="7">7 days before</option>
+                <option value="3" selected>3 days before</option>
+                <option value="1">1 day before</option>
+                <option value="0">On the cancel-by day</option>
+              </select>
+              <span class="field-error" data-error-for="reminderDays"></span>
+            </div>
+
+            <div class="field">
+              <label for="trial-cost">Cost after trial (USD)</label>
+              <div class="money-input">
+                <span aria-hidden="true">$</span>
+                <input
+                  id="trial-cost"
+                  name="costAfterTrial"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="0.00"
+                  autocomplete="off"
+                />
+              </div>
+              <span class="field-hint">Leave blank if there is no charge.</span>
+              <span class="field-error" data-error-for="costCents"></span>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="trial-billing">Billing cycle</label>
+              <select id="trial-billing" name="billingCycle">
+                <option value="monthly">Every month</option>
+                <option value="yearly">Every year</option>
+                <option value="weekly">Every week</option>
+                <option value="one-time">One-time charge</option>
+              </select>
+              <span class="field-error" data-error-for="billingCycle"></span>
+            </div>
+
+            <div class="field">
+              <label for="trial-cancel-url">Cancel page link <span class="optional">optional</span></label>
+              <input
+                id="trial-cancel-url"
+                name="cancelUrl"
+                type="url"
+                inputmode="url"
+                maxlength="2048"
+                autocomplete="url"
+                placeholder="https://example.com/cancel"
+              />
+              <span class="field-hint">The account or cancellation page.</span>
+              <span class="field-error" data-error-for="cancelUrl"></span>
+            </div>
+          </div>
+
+          <div class="field field--full">
+            <label for="trial-notes">Notes <span class="optional">optional</span></label>
+            <textarea
+              id="trial-notes"
+              name="notes"
+              rows="3"
+              maxlength="2000"
+              placeholder="Account email, plan name, cancellation steps — whatever helps later."
+            ></textarea>
+            <span class="field-hint field-hint--split">
+              <span>Stored in this browser only.</span>
+              <span><span id="notes-count">0</span>/2000</span>
+            </span>
+            <span class="field-error" data-error-for="notes"></span>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <p class="modal__footnote">Cancel-by is the last day of the trial.</p>
+          <div class="modal__footer-actions">
+            <button
+              class="button button--quiet"
+              type="button"
+              data-close-dialog="trial-dialog"
+            >
+              Cancel
+            </button>
+            <button class="button button--primary" id="save-trial-button" type="submit">
+              Save trial
+            </button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="reminders-dialog" aria-labelledby="reminders-dialog-title">
+      <div class="modal__header">
+        <div>
+          <p class="modal__eyebrow">Notifications &amp; calendar</p>
+          <h2 id="reminders-dialog-title">Cancel-by nudges</h2>
+        </div>
+        <button
+          class="modal__close"
+          type="button"
+          aria-label="Close reminders"
+          data-close-dialog="reminders-dialog"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        <p class="modal__lede">
+          Trialwise always shows deadlines on your board. You can also ask your
+          browser for a notification when it is time to cancel.
+        </p>
+
+        <section class="reminder-status" id="reminder-status-card">
+          <span class="reminder-status__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M18 9a6 6 0 0 0-12 0c0 7-2.5 7-2.5 8.5h17C20.5 16 18 16 18 9Z" />
+              <path d="M9.5 21h5" />
+            </svg>
+          </span>
+          <div class="reminder-status__copy">
+            <h3 id="notification-status-title">Browser reminders</h3>
+            <p id="notification-status-text">
+              Check whether this browser supports notifications.
+            </p>
+          </div>
+          <div class="reminder-status__actions">
+            <button class="button button--primary button--small" id="enable-notifications" type="button">
+              Turn on
+            </button>
+            <button class="button button--outline button--small" id="send-test-notification" type="button" hidden>
+              Send a test
+            </button>
+          </div>
+        </section>
+
+        <div class="notice notice--soft">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 10.5V17M12 7.3v.2" />
+          </svg>
+          <p>
+            A fully closed offline app cannot wake itself. Browser notifications
+            arrive only while Trialwise is open or running in the background.
+            For a reminder that reaches you elsewhere, add the dates to your calendar.
+          </p>
+        </div>
+
+        <section class="calendar-export">
+          <div>
+            <h3>Add deadlines to your calendar</h3>
+            <p>
+              Downloads an .ics file with upcoming reminder and cancel-by dates.
+              Import it into any calendar app you trust.
+            </p>
+          </div>
+          <button class="button button--outline" id="download-calendar-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="5.5" width="16" height="14.5" rx="3" />
+              <path d="M8 3.5v4M16 3.5v4M4 10h16M12 13v4m0 0-2-2m2 2 2-2" />
+            </svg>
+            Download .ics
+          </button>
+        </section>
+
+        <p class="modal__small-print">
+          Notifications use your device's own delivery system. Trialwise sends no
+          data to a push service and has no way to see whether a notification was delivered.
+        </p>
+      </div>
+
+      <div class="modal__footer">
+        <div class="modal__footer-actions modal__footer-actions--right">
+          <button
+            class="button button--quiet"
+            type="button"
+            data-close-dialog="reminders-dialog"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal data-modal" id="data-dialog" aria-labelledby="data-dialog-title">
+      <div class="modal__header">
+        <div>
+          <p class="modal__eyebrow">Portable by design</p>
+          <h2 id="data-dialog-title">Your data, your call</h2>
+        </div>
+        <button
+          class="modal__close"
+          type="button"
+          aria-label="Close data options"
+          data-close-dialog="data-dialog"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        <p class="modal__lede">
+          Trials live in this browser's local storage. Download a backup before
+          clearing browser data, changing devices, or trying a new browser.
+        </p>
+
+        <section class="data-section">
+          <div class="section-heading">
+            <div>
+              <h3>Keep a copy</h3>
+              <p>Plain files, no lock-in. <span id="backup-summary">No trials saved yet.</span></p>
+            </div>
+          </div>
+          <div class="export-grid">
+            <button class="export-tile" data-export="json" type="button">
+              <span class="export-tile__icon export-tile__icon--json">{ }</span>
+              <span>
+                <strong>JSON backup</strong>
+                <small>Everything, ready to import later.</small>
+              </span>
+            </button>
+            <button class="export-tile" data-export="csv" type="button">
+              <span class="export-tile__icon export-tile__icon--csv">CSV</span>
+              <span>
+                <strong>CSV spreadsheet</strong>
+                <small>Readable in Excel, Numbers, and Sheets.</small>
+              </span>
+            </button>
+            <button class="export-tile" data-export="ics" type="button">
+              <span class="export-tile__icon export-tile__icon--ics">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="5.5" width="16" height="14.5" rx="3" />
+                  <path d="M8 3.5v4M16 3.5v4M4 10h16" />
+                </svg>
+              </span>
+              <span>
+                <strong>Calendar dates</strong>
+                <small>Upcoming cancel-by reminders in .ics.</small>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <section class="data-section">
+          <div class="section-heading">
+            <div>
+              <h3>Bring data back</h3>
+              <p>Choose a Trialwise JSON backup or a CSV with the right columns.</p>
+            </div>
+          </div>
+
+          <div class="file-picker">
+            <input
+              id="import-file"
+              type="file"
+              accept=".json,.csv,application/json,text/csv"
+              hidden
+            />
+            <button class="button button--outline" id="choose-import-file" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 16V4m0 0L8 8m4-4 4 4" />
+                <path d="M5 14.5V19h14v-4.5" />
+              </svg>
+              Choose a file
+            </button>
+            <span class="file-picker__name" id="import-file-name">No file chosen</span>
+          </div>
+
+          <div class="import-panel" id="import-panel" hidden>
+            <div class="import-message" id="import-message" role="status"></div>
+            <div class="import-preview-list" id="import-preview-list"></div>
+
+            <fieldset class="import-mode" id="import-mode">
+              <legend>How should this import work?</legend>
+              <label>
+                <input type="radio" name="import-mode" value="merge" checked />
+                <span>
+                  <strong>Merge</strong>
+                  <small>Add new trials and update any with matching IDs.</small>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="import-mode" value="replace" />
+                <span>
+                  <strong>Replace everything</strong>
+                  <small>Swap the trials in this browser for this file's trials.</small>
+                </span>
+              </label>
+            </fieldset>
+
+            <button class="button button--primary" id="apply-import" type="button">
+              Import trials
+            </button>
+          </div>
+
+          <div class="import-errors" id="import-errors" role="alert" hidden></div>
+
+          <details class="csv-help">
+            <summary>CSV column guide</summary>
+            <p>
+              Required columns: <code>name</code>, <code>start_date</code>
+              (<code>YYYY-MM-DD</code>), and <code>trial_days</code>. Optional:
+              <code>cost_after_trial</code>, <code>billing_cycle</code>,
+              <code>cancel_url</code>, <code>reminder_days</code>,
+              <code>notes</code>, and <code>status</code>.
+            </p>
+          </details>
+        </section>
+
+        <section class="data-section install-section" id="install-section">
+          <div>
+            <h3>Keep Trialwise handy</h3>
+            <p>
+              Install it from your browser for a dedicated window and offline
+              access. On iPhone or iPad, use Share → Add to Home Screen.
+            </p>
+          </div>
+          <button class="button button--outline" id="install-dialog-button" type="button" hidden>
+            Install app
+          </button>
+        </section>
+
+        <section class="data-section danger-zone">
+          <div>
+            <h3>Erase this browser's data</h3>
+            <p>
+              Permanently removes all trials from local storage. Download a
+              backup first — this cannot be undone.
+            </p>
+          </div>
+          <button class="button button--danger-ghost" id="erase-data-button" type="button">
+            Erase all
+          </button>
+        </section>
+
+        <p class="modal__small-print">
+          Backups are unencrypted plain text. Store them with the same care you
+          would use for a paper calendar.
+        </p>
+      </div>
+
+      <div class="modal__footer">
+        <div class="modal__footer-actions modal__footer-actions--right">
+          <button class="button button--quiet" type="button" data-close-dialog="data-dialog">
+            Close
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal about-modal" id="about-dialog" aria-labelledby="about-dialog-title">
+      <div class="modal__header">
+        <div>
+          <p class="modal__eyebrow">Small, local, understandable</p>
+          <h2 id="about-dialog-title">How Trialwise works</h2>
+        </div>
+        <button
+          class="modal__close"
+          type="button"
+          aria-label="Close about Trialwise"
+          data-close-dialog="about-dialog"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal__body about-content">
+        <section>
+          <h3>The short version</h3>
+          <p>
+            Add a free trial's start date and length. Trialwise calculates the
+            last safe day to cancel, shows it in plain language, and keeps your
+            cancel link nearby. No account. No cloud. No tracking.
+          </p>
+        </section>
+
+        <section class="explainer">
+          <h3>How cancel-by dates work</h3>
+          <div class="date-example" aria-label="Seven day example">
+            <div>
+              <span>Start</span>
+              <strong>Oct 1</strong>
+            </div>
+            <span class="date-example__arrow" aria-hidden="true">→</span>
+            <div class="date-example--accent">
+              <span>Cancel by</span>
+              <strong>Oct 7</strong>
+            </div>
+            <span class="date-example__arrow" aria-hidden="true">→</span>
+            <div>
+              <span>Billing starts</span>
+              <strong>Oct 8</strong>
+            </div>
+          </div>
+          <p>
+            A 7-day trial that starts on October 1 includes October 1 through
+            October 7. Trialwise treats October 7 as the last safe cancellation
+            day and October 8 as the day billing may begin.
+          </p>
+          <p>
+            Providers have their own cut-off times, so earlier is safer. This
+            tool is a reminder aid, not a guarantee of a provider's billing behavior.
+          </p>
+        </section>
+
+        <section>
+          <h3>Reminders you can see</h3>
+          <p>
+            Your board shows deadlines without any notification permission.
+            Where your browser supports it, you can also opt in to system
+            notifications. They can only run while the app is open or running in
+            the background; an offline PWA cannot wake itself when fully closed.
+            The calendar export is the best fallback for reminders outside the app.
+          </p>
+        </section>
+
+        <section>
+          <h3>Your data &amp; backups</h3>
+          <p>
+            Trials stay in this browser's local storage. JSON backups preserve
+            every field for moving or restoring. CSV exports are spreadsheet-friendly
+            and can be imported back. Cancel-page links open the provider's site
+            only when you click them.
+          </p>
+        </section>
+
+        <section class="about-footer">
+          <p>
+            Trialwise is free, open source, and provided as-is under the MIT License.
+            Built by ASDALE DYNAMICS, LLC.
+          </p>
+          <p class="about-version">Version 1.0.0</p>
+        </section>
+      </div>
+
+      <div class="modal__footer">
+        <div class="modal__footer-actions modal__footer-actions--right">
+          <button class="button button--primary" type="button" data-close-dialog="about-dialog">
+            Got it
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal confirm-modal" id="confirm-dialog" aria-labelledby="confirm-title">
+      <div class="confirm-content">
+        <span class="confirm-icon" id="confirm-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 8v5M12 16.5v.2" />
+            <path d="M10.3 4.2 3.6 16.1A2 2 0 0 0 5.3 19h13.4a2 2 0 0 0 1.7-2.9L13.7 4.2a2 2 0 0 0-3.4 0Z" />
+          </svg>
+        </span>
+        <h2 id="confirm-title">Confirm this action</h2>
+        <p id="confirm-message"></p>
+        <div class="confirm-actions">
+          <button class="button button--quiet" id="confirm-cancel" type="button">Cancel</button>
+          <button class="button button--danger" id="confirm-action" type="button">Confirm</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div class="toast-region" id="toast-region" role="status" aria-live="polite"></div>
+
+    <noscript>
+      <div class="noscript">
+        Trialwise needs JavaScript to calculate dates and save your trials locally.
+        It does not send anything to a server.
+      </div>
+    </noscript>
+  </body>
+</html>
