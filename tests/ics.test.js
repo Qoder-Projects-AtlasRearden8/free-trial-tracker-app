@@ -94,6 +94,105 @@ test('a trial with no reminder lead time gets one deadline event', () => {
   assert.match(content, /SUMMARY:Last day to cancel Same Day/);
 });
 
+test('builds renewal reminders for ongoing subscriptions', () => {
+  const entries = prepareTrials(
+    [
+      {
+        id: 'sub-1',
+        kind: 'subscription',
+        name: 'Cloud Backup',
+        renewalDate: '2026-08-31',
+        costCents: 1200,
+        billingCycle: 'monthly',
+        cancelUrl: 'https://example.com/account',
+        reminderDays: 3,
+        notes: 'Family plan.',
+        status: 'active',
+      },
+      {
+        id: 'sub-2',
+        kind: 'subscription',
+        name: 'Old Membership',
+        renewalDate: '2026-10-01',
+        costCents: 500,
+        billingCycle: 'monthly',
+        reminderDays: 2,
+        status: 'canceled',
+      },
+    ],
+    { nowIso: NOW.toISOString() },
+  );
+
+  const { content, eventCount } = buildReminderCalendar(entries, {
+    today: '2026-10-22',
+    generatedAt: NOW,
+  });
+
+  assert.equal(eventCount, 2);
+  const unfolded = content.replace(/\r\n /g, '');
+  assert.match(unfolded, /SUMMARY:Renewal reminder: Cloud Backup/);
+  assert.match(unfolded, /SUMMARY:Renews today: Cloud Backup/);
+  assert.match(unfolded, /DTSTART;VALUE=DATE:20261028/);
+  assert.match(unfolded, /DTSTART;VALUE=DATE:20261031/);
+  assert.match(unfolded, /renews on 2026-10-31 for \$12\.00 per month/);
+  assert.match(unfolded, /URL:https:\/\/example.com\/account/);
+  assert.doesNotMatch(unfolded, /Old Membership/);
+});
+
+test('a subscription with no reminder lead time gets one renewal event', () => {
+  const [entry] = prepareTrials(
+    [
+      {
+        kind: 'subscription',
+        name: 'Same Day Plan',
+        renewalDate: '2026-11-01',
+        reminderDays: 0,
+      },
+    ],
+    { nowIso: NOW.toISOString() },
+  );
+
+  const { content, eventCount } = buildReminderCalendar([entry], {
+    today: '2026-10-22',
+    generatedAt: NOW,
+  });
+
+  assert.equal(eventCount, 1);
+  assert.match(content, /SUMMARY:Renews today: Same Day Plan/);
+  assert.match(content, /DTSTART;VALUE=DATE:20261101/);
+});
+
+test('calendar events do not claim a missing price is zero', () => {
+  const entries = prepareTrials(
+    [
+      {
+        kind: 'trial',
+        name: 'Unpriced Trial',
+        startDate: '2026-10-22',
+        trialDays: 5,
+        reminderDays: 1,
+      },
+      {
+        kind: 'subscription',
+        name: 'Unpriced Plan',
+        renewalDate: '2026-10-30',
+        reminderDays: 1,
+      },
+    ],
+    { nowIso: NOW.toISOString() },
+  );
+
+  const { content } = buildReminderCalendar(entries, {
+    today: '2026-10-22',
+    generatedAt: NOW,
+  });
+  const unfolded = content.replace(/\r\n /g, '');
+
+  assert.doesNotMatch(unfolded, /\$0\.00/);
+  assert.match(unfolded, /No price is recorded for after the trial/);
+  assert.match(unfolded, /The renewal price is not recorded/);
+});
+
 test('calendar lines are folded to a safe width', () => {
   const trials = prepareTrials(
     [

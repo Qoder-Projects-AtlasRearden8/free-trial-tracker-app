@@ -1,6 +1,6 @@
 {
   "id": "./",
-  "name": "Trialwise — Free Trial Tracker",
+  "name": "Trialwise — Trial & Subscription Tracker",
   "short_name": "Trialwise",
   "description": "A calm, offline-first free trial and subscription tracker. Your data stays on your device.",
   "lang": "en",
@@ -11,7 +11,11 @@
   "orientation": "any",
   "background_color": "#f4f0e6",
   "theme_color": "#1d4b3a",
-  "categories": ["productivity", "finance", "utilities"],
+  "categories": [
+    "productivity",
+    "finance",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",

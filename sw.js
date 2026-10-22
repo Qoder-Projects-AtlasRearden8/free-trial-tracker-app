@@ -4,7 +4,7 @@
  */
 
 const CACHE_PREFIX = 'trialwise-shell-';
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 const INDEX_URL = new URL('./index.html', self.location.href).href;
 const START_URL = new URL('./', self.location.href).href;
 

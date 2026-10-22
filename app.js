@@ -1,4 +1,5 @@
 import {
+  computeSubscription,
   computeTrial,
   daysBetween,
   monthlyEquivalentCents,
@@ -8,7 +9,7 @@ import {
 import {
   BILLING_CYCLE_SUFFIXES,
   DATA_VERSION,
-  MAX_TRIALS,
+  MAX_ENTRIES,
   NOTIFICATION_LOG_KEY,
   STORAGE_KEY,
   TrialValidationError,
@@ -74,7 +75,17 @@ const PHASE_META = Object.freeze({
   'ending-soon': { label: 'Ends soon', tone: 'warn' },
   'last-day': { label: 'Last day', tone: 'danger' },
   ended: { label: 'Trial ended', tone: 'danger' },
+  subscribed: { label: 'Subscribed', tone: 'calm' },
+  'renewing-soon': { label: 'Renews soon', tone: 'warn' },
+  'renews-today': { label: 'Renews today', tone: 'danger' },
   canceled: { label: 'Canceled', tone: 'canceled' },
+});
+
+const BILLING_RHYTHM = Object.freeze({
+  weekly: 'Every week',
+  monthly: 'Every month',
+  yearly: 'Every year',
+  'one-time': 'Once',
 });
 
 const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
@@ -193,7 +204,21 @@ function formatTrialPrice(trial, fallback = 'No price set') {
   return `${formatUsd(trial.costCents)}${BILLING_CYCLE_SUFFIXES[trial.billingCycle]}`;
 }
 
+function isSubscription(trial) {
+  return trial.kind === 'subscription';
+}
+
+function kindNoun(trial) {
+  return isSubscription(trial) ? 'subscription' : 'trial';
+}
+
 function cancelWindowText(details) {
+  if (details.kind === 'subscription') {
+    if (details.daysUntilRenewal === 0) {
+      return 'Today';
+    }
+    return `in ${plural(details.daysUntilRenewal, 'day')}`;
+  }
   if (details.daysUntilCancelBy < 0) {
     const days = Math.abs(details.daysUntilCancelBy);
     return `${plural(days, 'day')} overdue`;
@@ -204,7 +229,32 @@ function cancelWindowText(details) {
   return `${plural(details.daysUntilCancelBy, 'day')} left`;
 }
 
+function dueDateFor(details) {
+  return details.kind === 'subscription'
+    ? details.nextRenewalDate
+    : details.cancelByDate;
+}
+
+function daysUntilDue(details) {
+  return details.kind === 'subscription'
+    ? details.daysUntilRenewal
+    : details.daysUntilCancelBy;
+}
+
+function isDueToday(details) {
+  return daysUntilDue(details) === 0;
+}
+
 function trialDetails(trial) {
+  if (isSubscription(trial)) {
+    return computeSubscription({
+      renewalDate: trial.renewalDate,
+      billingCycle: trial.billingCycle,
+      reminderDays: trial.reminderDays,
+      status: trial.status,
+      today: state.today,
+    });
+  }
   return computeTrial({
     startDate: trial.startDate,
     trialDays: trial.trialDays,
@@ -265,8 +315,19 @@ function setupElements() {
     trialDialogTitle: byId('trial-dialog-title'),
     saveTrialButton: byId('save-trial-button'),
     formAlert: byId('form-alert'),
+    trialSchedule: byId('trial-schedule'),
+    subscriptionSchedule: byId('subscription-schedule'),
+    kindRadios: [...document.querySelectorAll('input[name="kind"]')],
+    previewLabel: byId('preview-label'),
     previewCancelDate: byId('preview-cancel-date'),
     previewBillingDate: byId('preview-billing-date'),
+    costLabel: byId('cost-label'),
+    costHint: byId('cost-hint'),
+    cancelUrlLabel: byId('cancel-url-label'),
+    cancelUrlHint: byId('cancel-url-hint'),
+    reminderDayOption: byId('reminder-day-option'),
+    oneTimeOption: byId('one-time-option'),
+    formFootnote: byId('form-footnote'),
     notesCount: byId('notes-count'),
     quickDaysButtons: [...document.querySelectorAll('[data-days]')],
     remindersDialog: byId('reminders-dialog'),
@@ -358,9 +419,9 @@ function loadTrials() {
       nowIso: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Trialwise could not read saved trials.', error);
+    console.error('Trialwise could not read saved items.', error);
     showToast(
-      'Saved trials could not be read. The existing browser copy was left untouched.',
+      'Saved items could not be read. The existing browser copy was left untouched.',
       { error: true, timeout: 9000 },
     );
     return null;
@@ -435,8 +496,8 @@ function sortForBoard(entries) {
       );
     }
 
-    const byDeadline = a.details.cancelByDate.localeCompare(
-      b.details.cancelByDate,
+    const byDeadline = dueDateFor(a.details).localeCompare(
+      dueDateFor(b.details),
     );
     if (byDeadline !== 0) {
       return byDeadline;
@@ -478,7 +539,7 @@ function getVisibleTrials() {
     if (!query) {
       return true;
     }
-    return [trial.name, trial.notes, trial.cancelUrl]
+    return [trial.name, trial.notes, trial.cancelUrl, trial.kind]
       .join('\n')
       .toLowerCase()
       .includes(query);
@@ -488,29 +549,29 @@ function getVisibleTrials() {
 function emptyStateForResults() {
   if (state.search.trim()) {
     return {
-      title: 'No matching trials',
-      copy: `Nothing matches “${state.search.trim()}”.`,
+      title: 'Nothing matches',
+      copy: `No trials or subscriptions match “${state.search.trim()}”.`,
       action: 'Clear search',
     };
   }
   if (state.filter === 'canceled') {
     return {
-      title: 'No canceled trials yet',
-      copy: 'Trials you mark canceled will stay here for your records.',
-      action: 'View open trials',
+      title: 'No canceled items yet',
+      copy: 'Anything you mark canceled will stay here for your records.',
+      action: 'View open items',
     };
   }
   if (state.filter === 'open') {
     return {
       title: 'Nothing open right now',
-      copy: 'Every trial on your board is marked canceled.',
-      action: 'View all trials',
+      copy: 'Every item on your watchlist is marked canceled.',
+      action: 'View all items',
     };
   }
   return {
-    title: 'No trials here',
-    copy: 'Try another filter or add a new trial.',
-    action: 'Add a trial',
+    title: 'No items here',
+    copy: 'Try another filter or add a trial or subscription.',
+    action: 'Add an item',
   };
 }
 
@@ -530,9 +591,9 @@ function renderTrialList() {
   const total = state.trials.length;
   if (visible.length === total && state.filter === 'all' && !state.search.trim()) {
     els.trialsCount.textContent =
-      total === 0 ? 'No trials yet.' : `${plural(total, 'trial')} on your board.`;
+      total === 0 ? 'No items yet.' : `${plural(total, 'item')} on your watchlist.`;
   } else {
-    els.trialsCount.textContent = `Showing ${visible.length} of ${plural(total, 'trial')}.`;
+    els.trialsCount.textContent = `Showing ${visible.length} of ${plural(total, 'item')}.`;
   }
 
   if (visible.length === 0) {
@@ -544,6 +605,7 @@ function renderTrialList() {
 }
 
 function createTrialCard(trial, details) {
+  const subscription = isSubscription(trial);
   const meta = PHASE_META[details.phase] ?? PHASE_META.active;
   const card = makeElement(
     'article',
@@ -560,6 +622,10 @@ function createTrialCard(trial, details) {
   let topNote = '';
   if (trial.status === 'canceled' && trial.canceledAt) {
     topNote = `Canceled ${formatTimestampShort(trial.canceledAt)}`;
+  } else if (subscription) {
+    topNote = `${BILLING_RHYTHM[trial.billingCycle]} · next ${formatDateShort(
+      details.nextRenewalDate,
+    )}`;
   } else {
     topNote = `Started ${formatDateShort(trial.startDate)} · ${plural(
       trial.trialDays,
@@ -572,17 +638,28 @@ function createTrialCard(trial, details) {
   const name = makeElement('h3', 'trial-card__name', trial.name);
 
   const deadline = makeElement('div', 'trial-card__deadline');
-  const kicker =
-    trial.status === 'canceled'
-      ? 'Cancel-by date'
-      : details.phase === 'ended'
-        ? 'Cancel-by passed'
-        : 'Cancel by';
+  let kicker;
+  if (subscription) {
+    kicker =
+      trial.status === 'canceled'
+        ? 'Renewal date on file'
+        : 'Next renewal';
+  } else if (trial.status === 'canceled') {
+    kicker = 'Cancel-by date';
+  } else if (details.phase === 'ended') {
+    kicker = 'Cancel-by passed';
+  } else {
+    kicker = 'Cancel by';
+  }
   deadline.append(makeElement('p', 'deadline-kicker', kicker));
 
   const deadlineRow = makeElement('div', 'deadline-row');
-  const date = makeElement('time', 'deadline-date', formatDateLong(details.cancelByDate));
-  date.dateTime = details.cancelByDate;
+  const dueDate =
+    subscription && trial.status === 'canceled'
+      ? trial.renewalDate
+      : dueDateFor(details);
+  const date = makeElement('time', 'deadline-date', formatDateLong(dueDate));
+  date.dateTime = dueDate;
   const badgeText =
     trial.status === 'canceled'
       ? 'Handled'
@@ -593,19 +670,29 @@ function createTrialCard(trial, details) {
   const facts = makeElement('div', 'trial-facts');
 
   const priceFact = makeElement('div', 'trial-fact');
-  priceFact.append(makeElement('span', '', 'After trial'));
+  priceFact.append(
+    makeElement('span', '', subscription ? 'Renewal price' : 'After trial'),
+  );
   priceFact.append(makeElement('strong', '', formatTrialPrice(trial)));
 
   const billingFact = makeElement('div', 'trial-fact');
-  billingFact.append(
-    makeElement(
-      'span',
-      '',
-      trial.status === 'canceled' ? 'Would have billed' : 'Billing begins',
-    ),
-  );
-  const billing = makeElement('strong', '', formatDateShort(details.billingDate));
-  billingFact.append(billing);
+  if (subscription) {
+    billingFact.append(makeElement('span', '', 'Billing rhythm'));
+    billingFact.append(
+      makeElement('strong', '', BILLING_RHYTHM[trial.billingCycle]),
+    );
+  } else {
+    billingFact.append(
+      makeElement(
+        'span',
+        '',
+        trial.status === 'canceled' ? 'Would have billed' : 'Billing begins',
+      ),
+    );
+    billingFact.append(
+      makeElement('strong', '', formatDateShort(details.billingDate)),
+    );
+  }
   facts.append(priceFact, billingFact);
 
   const reminder = makeElement('p', 'trial-reminder');
@@ -614,16 +701,22 @@ function createTrialCard(trial, details) {
 
   if (trial.status === 'canceled') {
     reminderIcon = 'check';
-    reminderText = 'Reminders are off for this trial.';
-  } else if (details.isOverdue) {
+    reminderText = `Reminders are off for this ${kindNoun(trial)}.`;
+  } else if (subscription && details.daysUntilRenewal === 0) {
+    reminderText = 'Renewal day is here. Review the charge if you no longer need it.';
+  } else if (!subscription && details.isOverdue) {
     reminderIcon = 'alert';
     reminderText = 'Cancellation window closed. Check your account.';
-  } else if (details.daysUntilCancelBy === 0) {
+  } else if (!subscription && details.daysUntilCancelBy === 0) {
     reminderText = 'Reminder due today — this is the last safe day.';
   } else if (details.isWithinReminderWindow) {
-    reminderText = `Reminder due now. Cancel by ${formatDateShort(
-      details.cancelByDate,
-    )}.`;
+    reminderText = subscription
+      ? `Renewal reminder due now. Renews ${formatDateShort(
+          details.nextRenewalDate,
+        )}.`
+      : `Reminder due now. Cancel by ${formatDateShort(
+          details.cancelByDate,
+        )}.`;
   } else {
     reminderText = `Nudge scheduled for ${formatDateShort(details.reminderDate)}.`;
   }
@@ -631,7 +724,7 @@ function createTrialCard(trial, details) {
 
   card.append(top, name, deadline, facts);
 
-  if (trial.status !== 'canceled') {
+  if (!subscription && trial.status !== 'canceled') {
     const elapsed = Math.min(
       trial.trialDays,
       Math.max(0, daysBetween(trial.startDate, state.today) + 1),
@@ -674,19 +767,24 @@ function createTrialCard(trial, details) {
   const actions = makeElement('div', 'trial-card__actions');
 
   if (trial.cancelUrl) {
-    const cancelLink = makeElement(
+    const accountLink = makeElement(
       'a',
       'button button--soft button--tiny',
     );
-    cancelLink.href = trial.cancelUrl;
-    cancelLink.target = '_blank';
-    cancelLink.rel = 'noopener noreferrer';
-    cancelLink.setAttribute(
+    accountLink.href = trial.cancelUrl;
+    accountLink.target = '_blank';
+    accountLink.rel = 'noopener noreferrer';
+    accountLink.setAttribute(
       'aria-label',
-      `Open cancellation page for ${trial.name} in a new tab`,
+      subscription
+        ? `Open account page for ${trial.name} in a new tab`
+        : `Open cancellation page for ${trial.name} in a new tab`,
     );
-    cancelLink.append(makeIcon('external'), makeElement('span', '', 'Cancel page'));
-    actions.append(cancelLink);
+    accountLink.append(
+      makeIcon('external'),
+      makeElement('span', '', subscription ? 'Manage page' : 'Cancel page'),
+    );
+    actions.append(accountLink);
   }
 
   actions.append(makeButton('Edit', 'button button--quiet button--tiny', 'edit', trial.id, 'edit'));
@@ -733,28 +831,30 @@ function createTrialCard(trial, details) {
 function renderSummary() {
   const open = detailsForAll(
     state.trials.filter((trial) => trial.status !== 'canceled'),
-  ).sort((a, b) => a.details.cancelByDate.localeCompare(b.details.cancelByDate));
+  ).sort((a, b) => dueDateFor(a.details).localeCompare(dueDateFor(b.details)));
   const canceled = state.trials.length - open.length;
+  const openTrials = open.filter(({ trial }) => !isSubscription(trial));
+  const openSubscriptions = open.filter(({ trial }) => isSubscription(trial));
 
   els.openTrialsValue.textContent = String(open.length);
 
-  const withinSeven = open.filter(
-    ({ details }) =>
-      details.daysUntilCancelBy >= 0 && details.daysUntilCancelBy <= 7,
-  ).length;
+  const withinSeven = open.filter(({ details }) => {
+    const days = daysUntilDue(details);
+    return days >= 0 && days <= 7;
+  }).length;
 
   if (open.length === 0) {
     els.openTrialsNote.textContent =
       canceled > 0
-        ? `${plural(canceled, 'canceled trial')} kept in your records.`
-        : 'Add a trial to see your next deadline.';
+        ? `${plural(canceled, 'canceled item')} kept in your records.`
+        : 'Add a trial or subscription to get started.';
   } else if (withinSeven > 0) {
     els.openTrialsNote.textContent = `${plural(
       withinSeven,
-      'cancel-by',
+      'date',
     )} within the next 7 days.`;
   } else {
-    els.openTrialsNote.textContent = 'No cancel-bys in the next 7 days.';
+    els.openTrialsNote.textContent = 'No deadlines in the next 7 days.';
   }
 
   const recurring = open.filter(({ trial }) => trial.billingCycle !== 'one-time');
@@ -767,25 +867,31 @@ function renderSummary() {
   if (monthlyTotal === 0) {
     els.monthlyCostNote.textContent = 'No recurring prices added yet.';
   } else {
-    els.monthlyCostNote.textContent = `${plural(
-      recurring.filter(({ trial }) => trial.costCents > 0).length,
-      'recurring plan',
-    )}, if you keep ${open.length === 1 ? 'it' : 'them'}.`;
+    els.monthlyCostNote.textContent = `Across ${plural(
+      recurring.length,
+      'open recurring plan',
+    )}.`;
   }
 
   els.nextDeadlineCard.classList.remove('summary-card--late');
   const overdue = open
     .filter(({ details }) => details.isOverdue)
     .sort((a, b) => b.details.cancelByDate.localeCompare(a.details.cancelByDate));
-  const upcoming = open.filter(({ details }) => !details.isOverdue);
-  const next = overdue[0] ?? upcoming[0] ?? null;
+  const next = overdue[0] ?? open[0] ?? null;
+  const nextLabel =
+    open.length === 0
+      ? 'Next deadline'
+      : openSubscriptions.length === 0
+        ? 'Next cancel-by'
+        : openTrials.length === 0
+          ? 'Next renewal'
+          : 'Next deadline';
 
   if (!next) {
-    els.nextDeadlineLabel.textContent = 'Next cancel-by';
-    els.nextDeadlineValue.textContent = open.length ? 'All clear' : '—';
-    els.nextDeadlineNote.textContent = open.length
-      ? 'No future cancel-by dates.'
-      : 'Add a trial to start tracking.';
+    els.nextDeadlineLabel.textContent = nextLabel;
+    els.nextDeadlineValue.textContent = '—';
+    els.nextDeadlineNote.textContent =
+      'Add a trial or subscription to start tracking.';
   } else if (next.details.isOverdue) {
     els.nextDeadlineLabel.textContent = 'Past cancel-by';
     els.nextDeadlineCard.classList.add('summary-card--late');
@@ -794,8 +900,10 @@ function renderSummary() {
       next.details,
     )}.`;
   } else {
-    els.nextDeadlineLabel.textContent = 'Next cancel-by';
-    els.nextDeadlineValue.textContent = formatDateShort(next.details.cancelByDate);
+    els.nextDeadlineLabel.textContent = nextLabel;
+    els.nextDeadlineValue.textContent = formatDateShort(
+      dueDateFor(next.details),
+    );
     els.nextDeadlineNote.textContent = `${next.trial.name} · ${cancelWindowText(
       next.details,
     )}.`;
@@ -805,18 +913,17 @@ function renderSummary() {
 
   if (open.length === 0) {
     els.dashboardSummary.textContent =
-      'Everything is handled. Add a trial whenever you are ready.';
+      'Everything is handled. Add a trial or subscription whenever you are ready.';
   } else if (overdue.length > 0) {
     els.dashboardSummary.textContent = `${plural(
       open.length,
-      'open trial',
-    )}. ${overdue.length > 1 ? 'Some deadlines have' : 'A deadline has'} passed — check the alerts below.`;
+      'open item',
+    )}. ${overdue.length > 1 ? 'Some cancel-by dates have' : 'A cancel-by date has'} passed — check the alerts below.`;
   } else {
-    const soonest = open[0];
     els.dashboardSummary.textContent = `${plural(
       open.length,
-      'open trial',
-    )}. The closest cancel-by is ${formatDateLong(soonest.details.cancelByDate)}.`;
+      'open item',
+    )}. Next up: ${formatDateLong(dueDateFor(open[0].details))}.`;
   }
 }
 
@@ -829,7 +936,7 @@ function namesForSummary(entries) {
   if (names.length === 2) {
     return `${names[0]} and ${names[1]}`;
   }
-  return names[0] ?? 'A trial';
+  return names[0] ?? 'An item';
 }
 
 function addReminderAlert({ variant, title, message, count }) {
@@ -840,10 +947,10 @@ function addReminderAlert({ variant, title, message, count }) {
   const copy = makeElement('div', 'alert__copy');
   copy.append(makeElement('strong', '', title), makeElement('p', '', message));
 
-  const action = makeElement('button', 'button button--outline button--tiny alert__action', 'Review trials');
+  const action = makeElement('button', 'button button--outline button--tiny alert__action', 'Review items');
   action.type = 'button';
   action.dataset.review = 'true';
-  action.setAttribute('aria-label', `Review ${plural(count, 'trial')} needing attention`);
+  action.setAttribute('aria-label', `Review ${plural(count, 'item')} needing attention`);
 
   alert.append(icon, copy, action);
   return alert;
@@ -856,9 +963,18 @@ function renderAlerts() {
   );
 
   const overdue = allOpen
-    .filter(({ details }) => details.isOverdue)
+    .filter(
+      ({ trial, details }) => !isSubscription(trial) && details.isOverdue,
+    )
     .sort((a, b) => b.details.cancelByDate.localeCompare(a.details.cancelByDate));
-  const lastDay = allOpen.filter(({ details }) => details.daysUntilCancelBy === 0);
+  const lastDay = allOpen.filter(
+    ({ trial, details }) =>
+      !isSubscription(trial) && details.daysUntilCancelBy === 0,
+  );
+  const renewingToday = allOpen.filter(
+    ({ trial, details }) =>
+      isSubscription(trial) && details.daysUntilRenewal === 0,
+  );
 
   if (overdue.length > 0) {
     els.reminderAlerts.append(
@@ -890,14 +1006,30 @@ function renderAlerts() {
     );
   }
 
-  if (overdue.length === 0 && lastDay.length === 0) {
+  if (renewingToday.length > 0) {
+    els.reminderAlerts.append(
+      addReminderAlert({
+        variant: 'warning',
+        title:
+          renewingToday.length === 1
+            ? 'A subscription renews today'
+            : `${renewingToday.length} subscriptions renew today`,
+        message: `${namesForSummary(renewingToday)} ${
+          renewingToday.length === 1 ? 'has a renewal charge due today' : 'have renewal charges due today'
+        }. Review before the next charge.`,
+        count: renewingToday.length,
+      }),
+    );
+  }
+
+  if (overdue.length === 0 && lastDay.length === 0 && renewingToday.length === 0) {
     const due = allOpen
       .filter(
         ({ details }) =>
-          details.isWithinReminderWindow && details.daysUntilCancelBy > 0,
+          details.isWithinReminderWindow && daysUntilDue(details) > 0,
       )
       .sort((a, b) =>
-        a.details.cancelByDate.localeCompare(b.details.cancelByDate),
+        dueDateFor(a.details).localeCompare(dueDateFor(b.details)),
       );
 
     if (due.length > 0) {
@@ -907,12 +1039,12 @@ function renderAlerts() {
           variant: 'warning',
           title:
             due.length === 1
-              ? 'A cancel-by reminder is due'
-              : `${due.length} cancel-by reminders are due`,
+              ? 'A reminder is due'
+              : `${due.length} reminders are due`,
           message: `${namesForSummary(due)} ${
-            due.length === 1 ? 'has a deadline' : 'have deadlines'
+            due.length === 1 ? 'has a date' : 'have dates'
           } coming up. The earliest is ${formatDateLong(
-            first.details.cancelByDate,
+            dueDateFor(first.details),
           )}.`,
           count: due.length,
         }),
@@ -925,30 +1057,24 @@ function renderNotificationIndicators() {
   const open = detailsForAll(
     state.trials.filter((trial) => trial.status !== 'canceled'),
   );
-  const dueCount = open.filter(
-    ({ details }) =>
-      details.isOverdue ||
-      details.daysUntilCancelBy === 0 ||
-      details.isWithinReminderWindow,
-  ).length;
-
-  els.notificationDot.hidden = dueCount === 0;
-  els.remindersButton.setAttribute(
-    'aria-label',
-    dueCount
-      ? `Reminder settings, ${plural(dueCount, 'trial')} need attention`
-      : 'Reminder settings',
-  );
-
   const attention = open.filter(
     ({ details }) =>
       details.isOverdue ||
-      details.daysUntilCancelBy === 0 ||
-      details.isWithinReminderWindow,
+      details.isWithinReminderWindow ||
+      isDueToday(details),
   ).length;
+
+  els.notificationDot.hidden = attention === 0;
+  els.remindersButton.setAttribute(
+    'aria-label',
+    attention
+      ? `Reminder settings, ${plural(attention, 'item')} need attention`
+      : 'Reminder settings',
+  );
+
   document.title = state.trials.length
-    ? `${attention ? `(${attention}) ` : ''}Trialwise — your trial board`
-    : 'Trialwise — free trials, gently tracked';
+    ? `${attention ? `(${attention}) ` : ''}Trialwise — your watchlist`
+    : 'Trialwise — trials and subscriptions, gently tracked';
 }
 
 function renderDashboard() {
@@ -969,7 +1095,7 @@ function render() {
   if (hasTrials) {
     renderDashboard();
   } else {
-    document.title = 'Trialwise — free trials, gently tracked';
+    document.title = 'Trialwise — trials and subscriptions, gently tracked';
     updateFilterCounts();
     renderNotificationIndicators();
   }
@@ -1013,7 +1139,10 @@ function showFormErrors(issues) {
       `[data-error-for="${issue.field}"]`,
     );
     const inputName = issue.field === 'costCents' ? 'costAfterTrial' : issue.field;
-    const input = els.trialForm.elements.namedItem(inputName);
+    let input = els.trialForm.elements.namedItem(inputName);
+    if (input && !(input instanceof HTMLElement)) {
+      input = els.trialForm.querySelector(`input[name="${inputName}"]`);
+    }
 
     if (errorElement instanceof HTMLElement) {
       errorElement.textContent = issue.message;
@@ -1042,6 +1171,63 @@ function updateNotesCount() {
   els.notesCount.textContent = String(notes.value.length);
 }
 
+function formKind() {
+  const selected = els.trialForm.querySelector('input[name="kind"]:checked');
+  return selected?.value === 'subscription' ? 'subscription' : 'trial';
+}
+
+function updateFormCopy(kind) {
+  const subscription = kind === 'subscription';
+  const noun = subscription ? 'subscription' : 'trial';
+  const editing = Boolean(state.editingId);
+
+  els.trialDialogEyebrow.textContent = editing ? `Edit ${noun}` : `New ${noun}`;
+  els.trialDialogTitle.textContent = editing
+    ? `Update this ${noun}`
+    : subscription
+      ? 'Add a subscription'
+      : 'Add a free trial';
+  els.saveTrialButton.textContent = editing ? 'Save changes' : `Save ${noun}`;
+  els.costLabel.textContent = subscription
+    ? 'Renewal cost (USD)'
+    : 'Cost after trial (USD)';
+  els.costHint.textContent = subscription
+    ? 'Leave blank if the price is unknown.'
+    : 'Leave blank if there is no charge.';
+  els.cancelUrlLabel.firstChild.nodeValue = subscription
+    ? 'Manage page link '
+    : 'Cancel page link ';
+  els.cancelUrlHint.textContent = subscription
+    ? 'The account page where you manage this plan.'
+    : 'The account or cancellation page.';
+  els.reminderDayOption.textContent = subscription
+    ? 'On the renewal day'
+    : 'On the cancel-by day';
+  els.formFootnote.textContent = subscription
+    ? 'Reminders repeat before each renewal.'
+    : 'Cancel-by is the last day of the trial.';
+  els.previewLabel.textContent = subscription
+    ? 'Your next renewal'
+    : 'Your safe cancellation window';
+}
+
+function applyFormKind() {
+  const kind = formKind();
+  const subscription = kind === 'subscription';
+  const form = els.trialForm.elements;
+
+  els.trialSchedule.hidden = subscription;
+  els.subscriptionSchedule.hidden = !subscription;
+  els.oneTimeOption.hidden = subscription;
+  els.oneTimeOption.disabled = subscription;
+  if (subscription && form.namedItem('billingCycle').value === 'one-time') {
+    form.namedItem('billingCycle').value = 'monthly';
+  }
+
+  updateFormCopy(kind);
+  updateDeadlinePreview();
+}
+
 function updateQuickDaySelection() {
   const days = els.trialForm.elements.namedItem('trialDays').value;
   for (const button of els.quickDaysButtons) {
@@ -1051,17 +1237,48 @@ function updateQuickDaySelection() {
 
 function updateDeadlinePreview() {
   const form = els.trialForm.elements;
-  const startDate = form.namedItem('startDate').value;
-  const trialDays = form.namedItem('trialDays').value;
-  const reminderDays = form.namedItem('reminderDays').value;
+  const reminderDays = Number(form.namedItem('reminderDays').value);
+  const billingCycle = form.namedItem('billingCycle').value;
 
   updateQuickDaySelection();
+
+  if (formKind() === 'subscription') {
+    const renewalDate = form.namedItem('renewalDate').value;
+    try {
+      const details = computeSubscription({
+        renewalDate,
+        billingCycle,
+        reminderDays,
+        today: state.today,
+      });
+      els.previewCancelDate.textContent = formatDateLong(
+        details.nextRenewalDate,
+      );
+      const rolled =
+        renewalDate < state.today ? ' Past date, so the next cycle is shown.' : '';
+      const nudge =
+        details.reminderDate >= state.today
+          ? `Nudge on ${formatDateLong(details.reminderDate)}.`
+          : 'The reminder window is already open.';
+      els.previewBillingDate.textContent = `${nudge} Repeats ${BILLING_RHYTHM[
+        billingCycle
+      ].toLowerCase()}.${rolled}`;
+    } catch {
+      els.previewCancelDate.textContent = 'Choose the next renewal date';
+      els.previewBillingDate.textContent =
+        'Trialwise rolls the date forward as each cycle passes.';
+    }
+    return;
+  }
+
+  const startDate = form.namedItem('startDate').value;
+  const trialDays = form.namedItem('trialDays').value;
 
   try {
     const details = computeTrial({
       startDate,
       trialDays: Number(trialDays),
-      reminderDays: Number(reminderDays),
+      reminderDays,
       today: state.today,
     });
     els.previewCancelDate.textContent = formatDateLong(details.cancelByDate);
@@ -1092,27 +1309,39 @@ function resetTrialForm() {
   els.trialForm.reset();
   els.trialForm.elements.namedItem('startDate').value = todayForStorage();
   els.trialForm.elements.namedItem('trialDays').value = '7';
+  els.trialForm.elements.namedItem('renewalDate').value = '';
   setReminderOption(3);
   els.trialForm.elements.namedItem('billingCycle').value = 'monthly';
   clearFieldErrors();
   updateNotesCount();
-  updateDeadlinePreview();
+  applyFormKind();
 }
 
 function openTrialDialog(trial = null) {
-  if (!trial && state.trials.length >= MAX_TRIALS) {
-    showToast(`Trialwise supports up to ${MAX_TRIALS} trials.`, { error: true });
+  if (!trial && state.trials.length >= MAX_ENTRIES) {
+    showToast(`Trialwise supports up to ${MAX_ENTRIES} items.`, { error: true });
     return;
   }
 
-  resetTrialForm();
   state.editingId = trial?.id ?? null;
+  resetTrialForm();
 
   if (trial) {
     const form = els.trialForm.elements;
+    const kind = isSubscription(trial) ? 'subscription' : 'trial';
+    const kindRadio = els.kindRadios.find((radio) => radio.value === kind);
+    if (kindRadio) {
+      kindRadio.checked = true;
+    }
+    applyFormKind();
+
     form.namedItem('name').value = trial.name;
-    form.namedItem('startDate').value = trial.startDate;
-    form.namedItem('trialDays').value = String(trial.trialDays);
+    if (isSubscription(trial)) {
+      form.namedItem('renewalDate').value = trial.renewalDate;
+    } else {
+      form.namedItem('startDate').value = trial.startDate;
+      form.namedItem('trialDays').value = String(trial.trialDays);
+    }
     setReminderOption(trial.reminderDays);
     form.namedItem('costAfterTrial').value = trial.costCents
       ? (trial.costCents / 100).toFixed(2)
@@ -1120,15 +1349,9 @@ function openTrialDialog(trial = null) {
     form.namedItem('billingCycle').value = trial.billingCycle;
     form.namedItem('cancelUrl').value = trial.cancelUrl;
     form.namedItem('notes').value = trial.notes;
-    els.trialDialogEyebrow.textContent = 'Edit trial';
-    els.trialDialogTitle.textContent = 'Update this trial';
-    els.saveTrialButton.textContent = 'Save changes';
-  } else {
-    els.trialDialogEyebrow.textContent = 'New trial';
-    els.trialDialogTitle.textContent = 'Add a free trial';
-    els.saveTrialButton.textContent = 'Save trial';
   }
 
+  updateFormCopy(formKind());
   updateNotesCount();
   updateDeadlinePreview();
   els.trialDialog.showModal();
@@ -1145,9 +1368,11 @@ function handleTrialSubmit(event) {
 
   const form = els.trialForm.elements;
   const values = {
+    kind: formKind(),
     name: form.namedItem('name').value,
     startDate: form.namedItem('startDate').value,
     trialDays: form.namedItem('trialDays').value,
+    renewalDate: form.namedItem('renewalDate').value,
     reminderDays: form.namedItem('reminderDays').value,
     costAfterTrial: form.namedItem('costAfterTrial').value,
     billingCycle: form.namedItem('billingCycle').value,
@@ -1157,7 +1382,7 @@ function handleTrialSubmit(event) {
 
   const existing = state.editingId ? findTrial(state.editingId) : null;
   if (state.editingId && !existing) {
-    showToast('That trial no longer exists. Close the form and try again.', {
+    showToast('That item no longer exists. Close the form and try again.', {
       error: true,
     });
     return;
@@ -1191,8 +1416,8 @@ function handleTrialSubmit(event) {
     const index = state.trials.findIndex((trial) => trial.id === existing.id);
     state.trials[index] = record;
   } else {
-    if (state.trials.length >= MAX_TRIALS) {
-      showToast(`Trialwise supports up to ${MAX_TRIALS} trials.`, {
+    if (state.trials.length >= MAX_ENTRIES) {
+      showToast(`Trialwise supports up to ${MAX_ENTRIES} items.`, {
         error: true,
       });
       return;
@@ -1210,16 +1435,24 @@ function handleTrialSubmit(event) {
     els.dashboardTitle.focus({ preventScroll: true });
   }
 
-  const deadline = trialDetails(record).cancelByDate;
+  const subscription = isSubscription(record);
   if (!saved) {
     showToast(
       'Saved for this session only. Browser storage is unavailable — download a backup before closing.',
       { error: true, timeout: 8000 },
     );
   } else if (existing) {
-    showToast('Trial updated.');
+    showToast(`${subscription ? 'Subscription' : 'Trial'} updated.`);
+  } else if (subscription) {
+    const details = trialDetails(record);
+    showToast(
+      `Subscription saved. Next renewal ${formatDateLong(
+        details.nextRenewalDate,
+      )}.`,
+    );
   } else {
-    showToast(`Trial saved. Cancel by ${formatDateLong(deadline)}.`);
+    const details = trialDetails(record);
+    showToast(`Trial saved. Cancel by ${formatDateLong(details.cancelByDate)}.`);
   }
 }
 
@@ -1247,8 +1480,8 @@ function setTrialStatus(id, status) {
     status === 'canceled'
       ? 'Marked canceled. The record is still here if you need it.'
       : wasCanceled
-        ? 'Restored to open trials.'
-        : 'Trial updated.',
+        ? 'Restored to open items.'
+        : 'Item updated.',
   );
 }
 
@@ -1257,12 +1490,12 @@ async function deleteTrial(id) {
   if (!trial) {
     return;
   }
+  const noun = kindNoun(trial);
 
   const confirmed = await confirmAction({
     title: `Delete ${trial.name}?`,
-    message:
-      'This removes the trial from this browser. Download a backup first if you want to keep the record.',
-    confirmLabel: 'Delete trial',
+    message: `This removes the ${noun} from this browser. Download a backup first if you want to keep the record.`,
+    confirmLabel: `Delete ${noun}`,
   });
   if (!confirmed) {
     return;
@@ -1374,7 +1607,7 @@ function updateReminderPanel({ requesting = false } = {}) {
   } else {
     els.notificationStatusTitle.textContent = 'Turn on browser reminders';
     els.notificationStatusText.textContent =
-      'Get one system alert when a cancel-by reminder comes due while Trialwise is open or running in the background.';
+      'Get one system alert when a trial cancel-by or subscription renewal reminder comes due while Trialwise is open or running in the background.';
     els.enableNotifications.hidden = false;
     els.enableNotifications.textContent = requesting ? 'Asking…' : 'Turn on';
     els.enableNotifications.disabled = requesting;
@@ -1464,7 +1697,7 @@ async function enableBrowserNotifications() {
     const shown = await showBrowserNotification(
       'Trialwise reminders are on',
       {
-        body: 'You will get a browser alert when a cancel-by reminder is due and Trialwise is running in the background.',
+        body: 'You will get a browser alert when a trial or subscription reminder is due and Trialwise is running in the background.',
         icon: './icons/icon-192.png',
         badge: './icons/icon-192.png',
         tag: 'trialwise-test',
@@ -1488,7 +1721,7 @@ async function enableBrowserNotifications() {
 
 async function sendTestNotification() {
   const shown = await showBrowserNotification('Tiny reminder, friendly test', {
-    body: 'This is what a Trialwise cancel-by nudge looks like.',
+    body: 'This is what a Trialwise trial or renewal nudge looks like.',
     icon: './icons/icon-192.png',
     badge: './icons/icon-192.png',
     tag: 'trialwise-test',
@@ -1519,7 +1752,7 @@ async function maybeSendDueNotifications() {
     )
       .filter(({ details }) => details.isWithinReminderWindow)
       .filter(({ trial, details }) => {
-        const key = `${trial.id}|${details.cancelByDate}`;
+        const key = `${trial.id}|${dueDateFor(details)}`;
         return !log[key];
       });
 
@@ -1531,9 +1764,9 @@ async function maybeSendDueNotifications() {
 
     if (due.length > 3) {
       delivered = await showBrowserNotification(
-        `${due.length} trial reminders need attention`,
+        `${due.length} reminders need attention`,
         {
-          body: `${namesForSummary(due)} have cancel-by dates coming up. Open Trialwise to review them.`,
+          body: `${namesForSummary(due)} have trial or renewal dates coming up. Open Trialwise to review them.`,
           icon: './icons/icon-192.png',
           badge: './icons/icon-192.png',
           tag: 'trialwise-due-summary',
@@ -1542,8 +1775,29 @@ async function maybeSendDueNotifications() {
       );
     } else {
       const results = await Promise.all(
-        due.map(({ trial, details }) =>
-          showBrowserNotification(
+        due.map(({ trial, details }) => {
+          if (isSubscription(trial)) {
+            return showBrowserNotification(
+              details.daysUntilRenewal === 0
+                ? `${trial.name} renews today`
+                : `${trial.name} renews ${formatDateShort(
+                    details.nextRenewalDate,
+                  )}`,
+              {
+                body: `${formatDateLong(
+                  details.nextRenewalDate,
+                )} is the next renewal. Price: ${formatTrialPrice(
+                  trial,
+                  'not set',
+                )}.`,
+                icon: './icons/icon-192.png',
+                badge: './icons/icon-192.png',
+                tag: `trialwise-${trial.id}`,
+                data: { url: new URL('./', window.location.href).href },
+              },
+            );
+          }
+          return showBrowserNotification(
             details.daysUntilCancelBy === 0
               ? `Last day to cancel ${trial.name}`
               : `Cancel ${trial.name} by ${formatDateShort(details.cancelByDate)}`,
@@ -1559,8 +1813,8 @@ async function maybeSendDueNotifications() {
               tag: `trialwise-${trial.id}`,
               data: { url: new URL('./', window.location.href).href },
             },
-          ),
-        ),
+          );
+        }),
       );
       delivered = results.some(Boolean);
     }
@@ -1568,7 +1822,7 @@ async function maybeSendDueNotifications() {
     if (delivered) {
       const now = new Date().toISOString();
       for (const { trial, details } of due) {
-        log[`${trial.id}|${details.cancelByDate}`] = now;
+        log[`${trial.id}|${dueDateFor(details)}`] = now;
       }
       writeNotificationLog(log);
     }
@@ -1594,7 +1848,7 @@ function downloadTextFile(content, filename, type) {
 
 function downloadJsonBackup() {
   if (state.trials.length === 0) {
-    showToast('Add a trial before downloading a backup.');
+    showToast('Add a trial or subscription before downloading a backup.');
     return;
   }
   const content = serializeJSONBackup(state.trials, {
@@ -1610,12 +1864,12 @@ function downloadJsonBackup() {
 
 function downloadCsvBackup() {
   if (state.trials.length === 0) {
-    showToast('Add a trial before downloading a spreadsheet.');
+    showToast('Add a trial or subscription before downloading a spreadsheet.');
     return;
   }
   downloadTextFile(
     trialsToCSV(state.trials),
-    `trialwise-trials-${state.today}.csv`,
+    `trialwise-data-${state.today}.csv`,
     'text/csv;charset=utf-8',
   );
   showToast('CSV spreadsheet downloaded.');
@@ -1628,7 +1882,7 @@ function downloadCalendar() {
   });
 
   if (calendar.eventCount === 0) {
-    showToast('There are no upcoming open trial dates to add to a calendar.');
+    showToast('There are no upcoming open dates to add to a calendar.');
     return;
   }
 
@@ -1647,14 +1901,14 @@ function updateDataDialog() {
     return;
   }
   const open = state.trials.filter((trial) => trial.status !== 'canceled').length;
-  const hasTrials = state.trials.length > 0;
-  els.backupSummary.textContent = hasTrials
-    ? `${plural(state.trials.length, 'trial')} saved, ${open} open.`
-    : 'No trials saved yet.';
+  const hasEntries = state.trials.length > 0;
+  els.backupSummary.textContent = hasEntries
+    ? `${plural(state.trials.length, 'item')} saved, ${open} open.`
+    : 'No items saved yet.';
   for (const button of els.exportButtons) {
-    button.disabled = !hasTrials;
+    button.disabled = !hasEntries;
   }
-  els.eraseDataButton.disabled = !hasTrials;
+  els.eraseDataButton.disabled = !hasEntries;
 }
 
 function resetImportUi({ clearName = true } = {}) {
@@ -1673,7 +1927,7 @@ function resetImportUi({ clearName = true } = {}) {
     mergeRadio.checked = true;
   }
   els.applyImport.disabled = true;
-  els.applyImport.textContent = 'Import trials';
+  els.applyImport.textContent = 'Import items';
 }
 
 function renderImportErrors(issues) {
@@ -1702,8 +1956,15 @@ function updateApplyImportLabel() {
   const count = state.pendingImport.trials.length;
   els.applyImport.textContent =
     mode === 'replace'
-      ? `Replace with ${plural(count, 'trial')}`
-      : `Import ${plural(count, 'trial')}`;
+      ? `Replace with ${plural(count, 'item')}`
+      : `Import ${plural(count, 'item')}`;
+}
+
+function importPreviewDate(entry) {
+  const details = trialDetails(entry);
+  return isSubscription(entry)
+    ? `Renews ${formatDateShort(details.nextRenewalDate)}`
+    : `Cancel by ${formatDateShort(details.cancelByDate)}`;
 }
 
 function showImportPreview(trials, filename) {
@@ -1712,7 +1973,7 @@ function showImportPreview(trials, filename) {
   els.importErrors.replaceChildren();
   els.importMessage.textContent = `Found ${plural(
     trials.length,
-    'trial',
+    'item',
   )} in ${filename}.`;
   els.importPreviewList.replaceChildren();
 
@@ -1720,7 +1981,7 @@ function showImportPreview(trials, filename) {
     const row = makeElement('div', 'import-preview-item');
     row.append(
       makeElement('span', '', trial.name),
-      makeElement('span', '', formatDateShort(trial.startDate)),
+      makeElement('span', '', importPreviewDate(trial)),
     );
     els.importPreviewList.append(row);
   }
@@ -1729,7 +1990,7 @@ function showImportPreview(trials, filename) {
       makeElement(
         'div',
         'import-preview-item',
-        `+ ${plural(trials.length - 3, 'more trial')}`,
+        `+ ${plural(trials.length - 3, 'more item')}`,
       ),
     );
   }
@@ -1799,13 +2060,13 @@ async function applyImport() {
 
   if (mode === 'replace') {
     const confirmed = await confirmAction({
-      title: 'Replace all trials?',
+      title: 'Replace all items?',
       message: `This removes ${plural(
         state.trials.length,
-        'trial',
+        'item',
       )} currently saved here and imports ${plural(
         imported.length,
-        'trial',
+        'item',
       )} from the file. Export a backup first if you might need the current list.`,
       confirmLabel: 'Replace everything',
     });
@@ -1817,10 +2078,10 @@ async function applyImport() {
   const next =
     mode === 'replace' ? imported : mergeTrials(state.trials, imported);
 
-  if (next.length > MAX_TRIALS) {
+  if (next.length > MAX_ENTRIES) {
     renderImportErrors([
       {
-        message: `This merge would create ${next.length} trials, above the ${MAX_TRIALS} trial limit.`,
+        message: `This merge would create ${next.length} items, above the ${MAX_ENTRIES} item limit.`,
       },
     ]);
     return;
@@ -1833,10 +2094,10 @@ async function applyImport() {
   resetImportUi();
   showToast(
     saved
-      ? `Imported ${plural(imported.length, 'trial')}.`
+      ? `Imported ${plural(imported.length, 'item')}.`
       : `Imported ${plural(
           imported.length,
-          'trial',
+          'item',
         )} for this session only. Browser storage is blocked.`,
     { error: !saved },
   );
@@ -1850,7 +2111,7 @@ async function eraseAllTrials() {
   const confirmed = await confirmAction({
     title: 'Erase all Trialwise data?',
     message:
-      'This permanently removes every trial and notification record from this browser. Download a backup first if you may want it later.',
+      'This permanently removes every item and notification record from this browser. Download a backup first if you may want it later.',
     confirmLabel: 'Erase everything',
   });
   if (!confirmed) {
@@ -1868,7 +2129,7 @@ async function eraseAllTrials() {
   els.dataDialog.close();
   resetImportUi();
   render();
-  showToast('All local trial data erased.');
+  showToast('All local Trialwise data erased.');
 }
 
 /* Install prompt */
@@ -1953,12 +2214,23 @@ function setupEventListeners() {
     if (target.name === 'notes') {
       updateNotesCount();
     }
-    if (['startDate', 'trialDays', 'reminderDays'].includes(target.name)) {
+    if (
+      ['startDate', 'trialDays', 'renewalDate', 'reminderDays'].includes(
+        target.name,
+      )
+    ) {
       updateDeadlinePreview();
     }
   });
 
-  els.trialForm.addEventListener('change', updateDeadlinePreview);
+  els.trialForm.addEventListener('change', (event) => {
+    if (event.target instanceof HTMLInputElement && event.target.name === 'kind') {
+      clearFieldErrors();
+      applyFormKind();
+      return;
+    }
+    updateDeadlinePreview();
+  });
   els.trialDialog.addEventListener('close', () => {
     state.editingId = null;
     resetTrialForm();
@@ -2093,14 +2365,14 @@ function setupEventListeners() {
     if (event.newValue === null) {
       state.trials = [];
       render();
-      showToast('All trials were erased in another tab.');
+      showToast('All Trialwise data was erased in another tab.');
       return;
     }
     const loaded = loadTrials();
     if (loaded !== null) {
       state.trials = loaded;
       render();
-      showToast('Trials updated in another tab.');
+      showToast('Your watchlist was updated in another tab.');
     }
   });
 

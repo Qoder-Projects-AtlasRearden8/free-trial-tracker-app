@@ -3,5 +3,5 @@ node_modules/
 .task
 *.log
 trialwise-backup-*.json
-trialwise-trials-*.csv
+trialwise-data-*.csv
 trialwise-reminders-*.ics

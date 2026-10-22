@@ -33,6 +33,22 @@ function rawTrial(overrides = {}) {
   };
 }
 
+function rawSubscription(overrides = {}) {
+  return {
+    id: 'sub-1',
+    kind: 'subscription',
+    name: 'Example Cloud',
+    renewalDate: '2026-11-15',
+    costCents: 999,
+    billingCycle: 'monthly',
+    cancelUrl: 'https://example.com/account',
+    reminderDays: 5,
+    notes: 'Shared family plan.',
+    status: 'active',
+    ...overrides,
+  };
+}
+
 test('creates a complete, normalized trial record', () => {
   const trial = createTrialRecord(rawTrial(), {
     nowIso: NOW,
@@ -40,7 +56,11 @@ test('creates a complete, normalized trial record', () => {
   });
 
   assert.equal(trial.id, 'trial-1');
+  assert.equal(trial.kind, 'trial');
   assert.equal(trial.name, 'Example Music');
+  assert.equal(trial.startDate, '2026-10-20');
+  assert.equal(trial.trialDays, 7);
+  assert.equal(trial.renewalDate, null);
   assert.equal(trial.costCents, 1499);
   assert.equal(trial.billingCycle, 'monthly');
   assert.equal(trial.reminderDays, 3);
@@ -48,6 +68,33 @@ test('creates a complete, normalized trial record', () => {
   assert.equal(trial.createdAt, NOW);
   assert.equal(trial.updatedAt, NOW);
   assert.equal(trial.canceledAt, null);
+});
+
+test('creates a subscription record anchored to its next renewal', () => {
+  const subscription = createTrialRecord(rawSubscription(), { nowIso: NOW });
+
+  assert.equal(subscription.kind, 'subscription');
+  assert.equal(subscription.name, 'Example Cloud');
+  assert.equal(subscription.renewalDate, '2026-11-15');
+  assert.equal(subscription.startDate, null);
+  assert.equal(subscription.trialDays, null);
+  assert.equal(subscription.costCents, 999);
+  assert.equal(subscription.reminderDays, 5);
+  assert.equal(subscription.billingCycle, 'monthly');
+});
+
+test('subscriptions require a recurring cycle and a renewal date', () => {
+  assert.throws(
+    () =>
+      createTrialRecord(rawSubscription({ billingCycle: 'one-time' }), {
+        nowIso: NOW,
+      }),
+    /weekly, monthly, or yearly/,
+  );
+  assert.throws(
+    () => createTrialRecord(rawSubscription({ renewalDate: '2026-02-30' }), { nowIso: NOW }),
+    /valid next renewal date/,
+  );
 });
 
 test('preserves stored timestamps when normalization is not an edit', () => {
@@ -179,9 +226,31 @@ test('JSON backup round-trips active and canceled trials', () => {
 
   assert.equal(restored.length, 2);
   assert.equal(restored[0].name, 'Example Music');
+  assert.equal(restored[0].kind, 'trial');
   assert.equal(restored[1].status, 'canceled');
   assert.equal(restored[1].canceledAt, '2026-10-21T11:00:00.000Z');
   assert.equal(JSON.parse(backup).app, 'Trialwise');
+});
+
+test('JSON backup round-trips trials and subscriptions together', () => {
+  const entries = prepareTrials(
+    [rawTrial(), rawSubscription(), rawSubscription({
+      id: 'sub-2',
+      name: 'Canceled Example',
+      status: 'canceled',
+      canceledAt: '2026-10-20T10:00:00.000Z',
+    })],
+    { nowIso: NOW },
+  );
+
+  const restored = parseJSONBackup(serializeJSONBackup(entries), { nowIso: NOW });
+  assert.deepEqual(
+    restored.map((entry) => entry.kind),
+    ['trial', 'subscription', 'subscription'],
+  );
+  assert.equal(restored[1].renewalDate, '2026-11-15');
+  assert.equal(restored[1].trialDays, null);
+  assert.equal(restored[2].status, 'canceled');
 });
 
 test('JSON import rejects bad input and duplicate IDs', () => {
@@ -207,7 +276,7 @@ test('JSON import rejects bad input and duplicate IDs', () => {
         JSON.stringify({ app: 'Trialwise', version: 1, trials: [rawTrial(), rawTrial()] }),
         { nowIso: NOW },
       ),
-    /duplicate trial id/,
+    /duplicate entry id/,
   );
 });
 
@@ -228,10 +297,61 @@ test('CSV export includes readable headers and protects formulas', () => {
   );
 
   const csv = trialsToCSV(trials);
-  assert.ok(csv.startsWith('\uFEFFid,name,start_date,trial_days'));
+  assert.ok(csv.startsWith('\uFEFFid,name,type,start_date,trial_days,renewal_date'));
   assert.match(csv, /'=HYPERLINK/);
   assert.match(csv, /"A, B\nC"/);
   assert.match(csv, /Plain/);
+  assert.match(csv, /,trial,2026-10-20,7,,/);
+});
+
+test('CSV export and import preserve subscriptions', () => {
+  const entries = prepareTrials(
+    [rawTrial(), rawSubscription()],
+    { nowIso: NOW },
+  );
+
+  const csv = trialsToCSV(entries);
+  assert.match(csv, /,subscription,,,2026-11-15,/);
+
+  const restored = parseCSVBackup(csv, { nowIso: NOW });
+  assert.equal(restored.length, 2);
+  assert.equal(restored[1].kind, 'subscription');
+  assert.equal(restored[1].renewalDate, '2026-11-15');
+  assert.equal(restored[1].startDate, null);
+  assert.equal(restored[1].trialDays, null);
+  assert.equal(restored[1].costCents, 999);
+  assert.equal(restored[1].reminderDays, 5);
+});
+
+test('CSV import infers subscriptions from renewal_date alone', () => {
+  const csv = [
+    'name,renewal_date,cost,billing_cycle,reminder_days',
+    'Streaming Bundle,2026-12-01,19.99,yearly,7',
+  ].join('\n');
+
+  const [subscription] = parseCSVBackup(csv, {
+    nowIso: NOW,
+    idFactory: () => 'inferred',
+  });
+  assert.equal(subscription.kind, 'subscription');
+  assert.equal(subscription.name, 'Streaming Bundle');
+  assert.equal(subscription.renewalDate, '2026-12-01');
+  assert.equal(subscription.costCents, 1999);
+  assert.equal(subscription.billingCycle, 'yearly');
+  assert.equal(subscription.reminderDays, 7);
+  assert.equal(subscription.id, 'inferred');
+});
+
+test('CSV import honors an explicit type column', () => {
+  const csv = [
+    'name,type,start_date,trial_days,renewal_date,billing_cycle',
+    'Membership,subscription,,,2026-11-20,weekly',
+  ].join('\n');
+
+  const [subscription] = parseCSVBackup(csv, { nowIso: NOW });
+  assert.equal(subscription.kind, 'subscription');
+  assert.equal(subscription.renewalDate, '2026-11-20');
+  assert.equal(subscription.billingCycle, 'weekly');
 });
 
 test('CSV backup round-trips unusual text and data', () => {
@@ -350,7 +470,7 @@ test('mergeTrials updates matching IDs and appends new records', () => {
   assert.equal(merged[2].name, 'New Trial');
 });
 
-test('prepareTrials reports row labels and rejects too many trials', () => {
+test('prepareTrials reports row labels and rejects an empty data set', () => {
   assert.throws(
     () =>
       prepareTrials([rawTrial({ startDate: 'not-a-date' })], {
@@ -362,6 +482,6 @@ test('prepareTrials reports row labels and rejects too many trials', () => {
 
   assert.throws(
     () => prepareTrials([], { nowIso: NOW }),
-    /No trials were found/,
+    /No entries were found/,
   );
 });

@@ -1661,6 +1661,119 @@ svg {
   line-height: 1.5;
 }
 
+.kind-fieldset {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+}
+
+.kind-fieldset legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.kind-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.kind-option {
+  position: relative;
+  display: block;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.kind-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.kind-option__surface {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 12px;
+  background: #fffefa;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 13px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.kind-option:hover .kind-option__surface {
+  border-color: #b9ae9c;
+}
+
+.kind-option input:checked + .kind-option__surface {
+  background: var(--green-mist);
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
+}
+
+.kind-option input:focus-visible + .kind-option__surface {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.kind-option__icon {
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  color: var(--ink-soft);
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  place-items: center;
+}
+
+.kind-option__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.kind-option input:checked + .kind-option__surface .kind-option__icon {
+  color: var(--green-dark);
+  background: var(--surface);
+  border-color: #b9cfbd;
+}
+
+.kind-option__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.kind-option__copy strong {
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.kind-option__copy small {
+  color: var(--ink-soft);
+  font-size: 0.67rem;
+  line-height: 1.35;
+}
+
+.kind-fieldset .field-error {
+  margin-top: 6px;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -2836,6 +2949,15 @@ svg {
     padding: 13px 19px;
   }
 
+  .kind-option__surface {
+    min-height: 60px;
+    padding: 9px 10px;
+  }
+
+  .kind-option__copy small {
+    font-size: 0.64rem;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
     gap: 16px;
@@ -2916,6 +3038,10 @@ svg {
 @media (max-width: 360px) {
   .brand__copy {
     display: none;
+  }
+
+  .kind-switch {
+    grid-template-columns: 1fr;
   }
 }
 
