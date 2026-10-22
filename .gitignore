@@ -1,7 +1,13 @@
-node_modules/
-.DS_Store
-.task
 *.log
+*.pyc
+.DS_Store
+.env
+.env.*
+.task
+.venv/
+__pycache__/
+dist/*.tmp
+node_modules/
 trialwise-backup-*.json
 trialwise-data-*.csv
 trialwise-reminders-*.ics
